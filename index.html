@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SYG Store Locator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <link
+      href="https://api.tiles.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      /* Basic Layout */
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: row;
+        min-height: 100vh;
+        overflow: auto;
+        flex-wrap: wrap;
+      }
+
+      #sidebar {
+        width: 30%;
+        max-width: 400px;
+        background: #f8f8f8;
+        overflow-y: auto;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        border-right: 1px solid #ddd;
+        height: 100vh;
+        box-sizing: border-box;
+      }
+
+      #map {
+        flex: 1;
+        position: relative;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .store {
+        margin-bottom: 20px;
+        cursor: pointer;
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+        transition: background-color 0.3s ease;
+      }
+
+      .store h3 {
+        margin: 0 0 5px;
+        font-size: 18px;
+      }
+
+      .store p {
+        margin: 0;
+        font-size: 14px;
+        color: #555;
+      }
+
+      .store:hover {
+        background-color: #dcdcdc;
+      }
+
+      .store.clicked {
+        background-color: #b0b0b0;
+      }
+
+      .marker {
+        background-color: #0092FF;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+
+      /* Mobile responsive styles */
+      @media (max-width: 768px) {
+        body {
+          flex-direction: column;
+        }
+
+        #sidebar {
+          width: 100%;
+          max-width: none;
+          height: auto;
+          border-right: none;
+          border-bottom: 1px solid #ddd;
+        }
+
+        #map {
+          height: 50vh;
+        }
+
+        .store h3 {
+          font-size: 16px;
+        }
+
+        .store p {
+          font-size: 12px;
+        }
+      }
+
+      /* Search & Filters */
+      #searchBar {
+        margin-bottom: 20px;
+        padding: 10px;
+        width: 100%;
+        font-size: 14px;
+      }
+
+      select {
+        margin: 10px 0;
+        padding: 10px;
+        width: 100%;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar">
+      <h1>SYG locations</h1>
+      
+      <!-- Search bar -->
+      <input type="text" id="searchBar" placeholder="Search for a store...">
+      
+      <!-- Store Status Filter -->
+      <select id="statusFilter">
+        <option value="">Select Store Status</option>
+        <option value="open">Open</option>
+        <option value="closed">Closed</option>
+      </select>
+      
+      <!-- State Filter -->
+      <select id="stateFilter">
+        <option value="">Select State</option>
+        <option value="New Jersey">New Jersey</option>
+        <option value="New York">New York</option>
+      </select>
+      
+      <div id="storeList"></div>
+    </div>
+    <div id="map"></div>
+    <script>
+      mapboxgl.accessToken = 'pk.eyJ1Ijoic3lnbGxjIiwiYSI6ImNtNWNvNWt5OTVleWwyanEzMHdnNHVrcWcifQ.HX11bpXihGA-qbLEQ0HPFQ';
+
+      const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/sygllc/cm5cpmfha00ri01s999k717oq',
+        center: [-74.0060, 40.7128],
+        zoom: 10
+      });
+
+      const storeData = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {
+              address: "211 Broad Street, Elizabeth, New Jersey 07201, United States",
+              store_name: "Sell Your Gadgets - Elizabeth",
+              store_hours: "Mon - Sat 10AM - 7PM",
+              status: "open", 
+              state: "New Jersey"
+            },
+            geometry: {
+              type: "Point",
+              coordinates: [-74.214692, 40.666845]
+            }
+          },
+          {
+            type: "Feature",
+            properties: {
+              address: "30-15 Steinway Street, Astoria, New York 11103, United States",
+              store_name: "Sell Your Gadgets - Astoria",
+              store_hours: "Mon - Sat 10AM - 7PM",
+              status: "closed", 
+              state: "New York"
+            },
+            geometry: {
+              type: "Point",
+              coordinates: [-73.915252, 40.763348]
+            }
+          }
+        ]
+      };
+
+      const sidebar = document.getElementById('sidebar');
+      const storeList = document.getElementById('storeList');
+      const searchBar = document.getElementById('searchBar');
+      const statusFilter = document.getElementById('statusFilter');
+      const stateFilter = document.getElementById('stateFilter');
+
+      const addStoreToSidebar = (store, coordinates) => {
+        const storeDiv = document.createElement('div');
+        storeDiv.className = 'store';
+        storeDiv.innerHTML = `
+          <h3>${store.store_name}</h3>
+          <p>${store.address}</p>
+          <p><strong>Hours:</strong> ${store.store_hours}</p>
+        `;
+
+        storeDiv.addEventListener('click', () => {
+          map.flyTo({
+            center: coordinates,
+            zoom: 15
+          });
+
+          const markerPopup = new mapboxgl.Popup({ offset: 25 })
+            .setLngLat(coordinates)
+            .setHTML(`  
+              <h3>${store.store_name}</h3>
+              <p>${store.address}</p>
+              <p><strong>Hours:</strong> ${store.store_hours}</p>
+            `);
+
+          markerPopup.addTo(map);
+        });
+
+        storeList.appendChild(storeDiv);
+      };
+
+      const filterStores = () => {
+        storeList.innerHTML = ''; // Clear current list
+        const status = statusFilter.value;
+        const state = stateFilter.value;
+        const searchText = searchBar.value.toLowerCase();
+
+        storeData.features.forEach((storeFeature) => {
+          const { store_name, address, status: storeStatus, state: storeState } = storeFeature.properties;
+          const coordinates = storeFeature.geometry.coordinates;
+
+          // Show store if it matches the filters or no filters are applied
+          if (
+            (status && storeStatus !== status) ||
+            (state && storeState !== state) ||
+            (searchText && !store_name.toLowerCase().includes(searchText) && !address.toLowerCase().includes(searchText))
+          ) {
+            return; // Skip if it doesn't match filters or search
+          }
+
+          addStoreToSidebar(storeFeature.properties, coordinates);
+
+          new mapboxgl.Marker({ color: '#0092FF' })
+            .setLngLat(coordinates)
+            .addTo(map);
+        });
+      };
+
+      // Initialize map markers and sidebar (show all stores by default)
+      storeData.features.forEach((storeFeature) => {
+        addStoreToSidebar(storeFeature.properties, storeFeature.geometry.coordinates);
+
+        new mapboxgl.Marker({ color: '#0092FF' })
+          .setLngLat(storeFeature.geometry.coordinates)
+          .addTo(map);
+      });
+
+      // Add event listeners for search and filters
+      searchBar.addEventListener('input', filterStores);
+      statusFilter.addEventListener('change', filterStores);
+      stateFilter.addEventListener('change', filterStores);
+
+      // Initialize the filter to show all stores initially
+      filterStores();
+
+    </script>
+  </body>
+</html>
